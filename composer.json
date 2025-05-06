@@ -1,0 +1,23 @@
+{
+  "name": "yourvendor/bug-tracking-system",
+  "description": "A comprehensive bug tracking system with MVC architecture",
+  "type": "project",
+  "require": {
+    "php": ">=7.4",
+    "phpmailer/phpmailer": "^6.8",
+    "ext-pdo": "*",
+    "ext-json": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "app/"
+    }
+  },
+  "authors": [
+    {
+      "name": "Your Name",
+      "email": "your.email@example.com"
+    }
+  ],
+  "minimum-stability": "stable"
+}
