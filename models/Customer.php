@@ -1,7 +1,8 @@
 <?php
-require_once 'User.php';
-require_once 'Observable.php';
+require_once 'models/User.php';
+require_once 'models/Observer.php';
 require_once 'services/NotificationService.php';
+require_once 'models/Bug.php';
 
 class Customer extends User implements Observer {
     public function __construct($id = null, $name = null, $email = null, $password = null) {
@@ -42,7 +43,12 @@ class Customer extends User implements Observer {
     }
 
     public function register() {
-        global $db;
+        global $db; // Explicitly declare $db as global
+        
+        if (!$db) {
+            // If $db is still null, try to reconnect
+            require_once 'config/database.php';
+        }
         
         // Check if email already exists
         $stmt = $db->prepare("SELECT * FROM users WHERE email = ?");
@@ -177,10 +183,12 @@ class Customer extends User implements Observer {
         return false;
     }
 
-    public function update($subject, $status) {
+    // Fixed update method to match the expected parameters
+    public function update($bug, $status) {
         // Use notification service to handle both in-app and email notifications
         $notificationService = NotificationService::getInstance();
-        return $notificationService->notifyBugStatusChange($this, $subject, $status);
+        $oldStatus = $bug->getStatus(); // Get the current status before update
+        return $notificationService->notifyBugStatusChange($this, $bug, $status, $oldStatus);
     }
 
     public function getReportedBugs() {

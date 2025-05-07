@@ -40,8 +40,7 @@
                     <ul class="navbar-nav">
                         <?php if (isset($_SESSION['user_id'])): ?>
                             <!-- Notification Dropdown -->
-                            <?php include 'views/components/notification-dropdown.php'; ?>
-                            
+                             
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <?php echo $_SESSION['user_name']; ?>

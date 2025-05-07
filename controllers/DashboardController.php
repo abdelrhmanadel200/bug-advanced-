@@ -54,10 +54,10 @@ class DashboardController {
                                  LIMIT 5");
             $stmt->execute();
         }
-        $recent_bugs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // $recent_bugs = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Get recent activity
-        $recent_activity = $this->system->getRecentActivity(5);
+        // $recent_activity = $this->system->getRecentActivity(5);
         
         // Display dashboard
         include 'views/dashboard.php';

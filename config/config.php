@@ -1,44 +1,42 @@
 <?php
-// Database Configuration
+// Database configuration
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'bug_tracking_system');
+define('DB_NAME', 'bug_tracker');
 define('DB_USER', 'root');
 define('DB_PASS', '');
+define('DB_CHARSET', 'utf8mb4');
 
-// Application Configuration
+// Application configuration
 define('APP_NAME', 'Bug Tracking System');
-define('APP_URL', 'http://localhost/bug_tracking_system');
-define('APP_VERSION', '1.0.0');
+define('APP_URL', 'http://localhost/bug-tracker');
 
-// Session Configuration
-define('SESSION_NAME', 'bug_tracking_system');
+
+// Session configuration
+define('SESSION_NAME  ','1.0.0');
+define('APP_TIMEZONE', 'UTC');
+
+// Session configuration
+define('SESSION_NAME', 'bug_tracker_session');
 define('SESSION_LIFETIME', 86400); // 24 hours
 
-// File Upload Configuration
-define('UPLOAD_DIR', 'uploads/');
-define('MAX_FILE_SIZE', 5242880); // 5MB
-define('ALLOWED_EXTENSIONS', 'jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,zip,rar');
-
-// SMTP Configuration
-define('SMTP_HOST', ''); // e.g., smtp.gmail.com
+// SMTP configuration for email notifications
+define('SMTP_HOST', 'smtp.gmail.com');
+define('SMTP_USERNAME', 'booda9963@gmail.com');
+define('SMTP_PASSWORD', 'bsrl cmwe ckwe wcxd');
+define('SMTP_ENCRYPTION', 'tls');
 define('SMTP_PORT', 587);
-define('SMTP_SECURE', 'tls'); // tls or ssl
-define('SMTP_USERNAME', '');
-define('SMTP_PASSWORD', '');
-define('SMTP_FROM_EMAIL', '');
-define('SMTP_FROM_NAME', APP_NAME);
+define('SMTP_FROM_EMAIL', 'noreply@bugtracker.com');
+define('SMTP_FROM_NAME', 'Bug Tracking System');
 
-// GitHub Integration
+// File upload configuration
+define('MAX_UPLOAD_SIZE', 5242880); // 5MB
+define('ALLOWED_EXTENSIONS', 'jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,zip');
+define('UPLOAD_PATH', 'uploads/');
+
+// GitHub integration
 define('GITHUB_CLIENT_ID', '');
 define('GITHUB_CLIENT_SECRET', '');
-define('GITHUB_REDIRECT_URI', APP_URL . '/github-callback.php');
+define('GITHUB_REDIRECT_URI', APP_URL . '/index.php?controller=github&action=callback');
 
-// Initialize session
-session_name(SESSION_NAME);
-session_start();
-
-// Include database connection
-require_once 'database.php';
-
-// Include helper functions
-require_once 'functions.php';
+// Helper function to get base URL
+ 

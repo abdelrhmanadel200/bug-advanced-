@@ -1,6 +1,10 @@
 <?php
 require_once 'AssignmentService.php';
 require_once 'services/NotificationService.php';
+require_once 'models/Bug.php';
+require_once 'models/Administrator.php';
+require_once 'models/Staff.php';
+require_once 'models/Customer.php';
 
 class BugTrackingSystem {
     private static $instance = null;
@@ -22,7 +26,7 @@ class BugTrackingSystem {
     private function __clone() {}
     
     // Prevent unserialization
-    private function __wakeup() {}
+    public function __wakeup() {}
     
     public function trackBug($ticketNumber) {
         $bug = Bug::findByTicketNumber($ticketNumber);
@@ -56,6 +60,10 @@ class BugTrackingSystem {
             
             // Get all administrators
             global $db;
+            if (!$db) {
+                require_once 'config/database.php';
+            }
+            
             $stmt = $db->prepare("SELECT * FROM users WHERE role = 'administrator' AND status = 'active'");
             $stmt->execute();
             $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -85,10 +93,14 @@ class BugTrackingSystem {
             $bug->setStatus('assigned');
             
             // Log activity
-            $this->logActivity($_SESSION['user_id'] ?? null, 'assign_bug', "Assigned bug #{$bug->getTicketNumber()} to staff");
+            $this->logActivity($_SESSION['user_id'] ?? 0, 'assign_bug', "Assigned bug #{$bug->getTicketNumber()} to staff");
             
             // Get staff details for notification
             global $db;
+            if (!$db) {
+                require_once 'config/database.php';
+            }
+            
             $stmt = $db->prepare("SELECT * FROM users WHERE id = ? AND role = 'staff'");
             $stmt->execute([$staffId]);
             $staffData = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -114,7 +126,7 @@ class BugTrackingSystem {
             
             if ($staff) {
                 // Log activity
-                $this->logActivity($_SESSION['user_id'] ?? null, 'assign_bug', "Automatically assigned bug #{$bug->getTicketNumber()} to {$staff->getName()}");
+                $this->logActivity($_SESSION['user_id'] ?? 0, 'assign_bug', "Automatically assigned bug #{$bug->getTicketNumber()} to {$staff->getName()}");
                 
                 return true;
             }
@@ -129,6 +141,9 @@ class BugTrackingSystem {
     
     public function getBugStatistics() {
         global $db;
+        if (!$db) {
+            require_once 'config/database.php';
+        }
         
         $stmt = $db->prepare("SELECT 
                              COUNT(*) as total,
@@ -148,6 +163,9 @@ class BugTrackingSystem {
     
     public function getProjectStatistics() {
         global $db;
+        if (!$db) {
+            require_once 'config/database.php';
+        }
         
         $stmt = $db->prepare("SELECT 
                              COUNT(*) as total,
@@ -160,6 +178,9 @@ class BugTrackingSystem {
     
     public function getUserStatistics() {
         global $db;
+        if (!$db) {
+            require_once 'config/database.php';
+        }
         
         $stmt = $db->prepare("SELECT 
                              COUNT(*) as total,
@@ -176,6 +197,9 @@ class BugTrackingSystem {
     
     public function getRecentActivity($limit = 10) {
         global $db;
+        if (!$db) {
+            require_once 'config/database.php';
+        }
         
         $stmt = $db->prepare("SELECT a.*, u.name as user_name 
                              FROM activity_log a 
@@ -188,13 +212,54 @@ class BugTrackingSystem {
     
     public function logActivity($userId, $action, $details) {
         global $db;
+        if (!$db) {
+            require_once 'config/database.php';
+        }
         
-        $stmt = $db->prepare("INSERT INTO activity_log (user_id, action, details, created_at) VALUES (?, ?, ?, ?)");
-        return $stmt->execute([$userId, $action, $details, date('Y-m-d H:i:s')]);
+        // Check if activity_log table has a NOT NULL constraint on user_id
+        try {
+            // First, check if the table structure allows NULL for user_id
+            $stmt = $db->prepare("SHOW COLUMNS FROM activity_log WHERE Field = 'user_id'");
+            $stmt->execute();
+            $column = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // If NULL is not allowed and userId is null, use a system user ID (0) instead
+            if ($column && strpos($column['Null'], 'NO') !== false && $userId === null) {
+                $userId = 0; // Use 0 as a system user ID
+            }
+            
+            // Insert the activity log
+            $stmt = $db->prepare("INSERT INTO activity_log (user_id, action, details, created_at) VALUES (?, ?, ?, ?)");
+            return $stmt->execute([$userId, $action, $details, date('Y-m-d H:i:s')]);
+        } catch (PDOException $e) {
+            // If there's an error, try an alternative approach
+            try {
+                // Create a modified activity_log table if it doesn't exist
+                $db->exec("CREATE TABLE IF NOT EXISTS activity_log_system (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NULL,
+                    action VARCHAR(100) NOT NULL,
+                    details TEXT,
+                    created_at DATETIME NOT NULL
+                )");
+                
+                // Insert into the modified table
+                $stmt = $db->prepare("INSERT INTO activity_log_system (user_id, action, details, created_at) VALUES (?, ?, ?, ?)");
+                return $stmt->execute([$userId, $action, $details, date('Y-m-d H:i:s')]);
+            } catch (PDOException $e2) {
+                // If all else fails, just log to a file
+                $logMessage = date('Y-m-d H:i:s') . " - User: " . ($userId ?? 'System') . " - Action: $action - Details: $details\n";
+                file_put_contents('activity_log.txt', $logMessage, FILE_APPEND);
+                return true;
+            }
+        }
     }
     
     public function generateReports($type, $filters = []) {
         global $db;
+        if (!$db) {
+            require_once 'config/database.php';
+        }
         
         switch ($type) {
             case 'bugs':
@@ -284,6 +349,9 @@ class BugTrackingSystem {
     
     public function manageUserStatus($userId, $status) {
         global $db;
+        if (!$db) {
+            require_once 'config/database.php';
+        }
         
         $validStatuses = ['active', 'inactive', 'banned'];
         
@@ -296,7 +364,7 @@ class BugTrackingSystem {
         
         if ($result) {
             // Log activity
-            $this->logActivity($_SESSION['user_id'] ?? null, 'update_user_status', "Updated user status to {$status}");
+            $this->logActivity($_SESSION['user_id'] ?? 0, 'update_user_status', "Updated user status to {$status}");
             
             // Get user details for notification
             $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");

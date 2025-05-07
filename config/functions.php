@@ -1,119 +1,90 @@
 <?php
-// Helper functions
-
-/**
- * Sanitize input data
- * 
- * @param string $data Input data
- * @return string Sanitized data
- */
-function sanitize($data) {
-    $data = trim($data);
-    $data = stripslashes($data);
-    $data = htmlspecialchars($data);
-    return $data;
+// Function to get the base URL of the application
+function getBaseUrl() {
+    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'];
+    $path = dirname($_SERVER['SCRIPT_NAME']);
+    $path = $path === '/' ? '' : $path;
+    
+    return "{$protocol}://{$host}{$path}";
 }
 
-/**
- * Generate a random string
- * 
- * @param int $length Length of the string
- * @return string Random string
- */
-function generateRandomString($length = 10) {
-    $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    $charactersLength = strlen($characters);
-    $randomString = '';
-    for ($i = 0; $i < $length; $i++) {
-        $randomString .= $characters[rand(0, $charactersLength - 1)];
+// Function to format time ago
+function timeAgo($datetime) {
+    $time = strtotime($datetime);
+    $now = time();
+    $diff = $now - $time;
+    
+    if ($diff < 60) {
+        return 'just now';
+    } elseif ($diff < 3600) {
+        $minutes = floor($diff / 60);
+        return $minutes . ' minute' . ($minutes > 1 ? 's' : '') . ' ago';
+    } elseif ($diff < 86400) {
+        $hours = floor($diff / 3600);
+        return $hours . ' hour' . ($hours > 1 ? 's' : '') . ' ago';
+    } elseif ($diff < 604800) {
+        $days = floor($diff / 86400);
+        return $days . ' day' . ($days > 1 ? 's' : '') . ' ago';
+    } elseif ($diff < 2592000) {
+        $weeks = floor($diff / 604800);
+        return $weeks . ' week' . ($weeks > 1 ? 's' : '') . ' ago';
+    } elseif ($diff < 31536000) {
+        $months = floor($diff / 2592000);
+        return $months . ' month' . ($months > 1 ? 's' : '') . ' ago';
+    } else {
+        $years = floor($diff / 31536000);
+        return $years . ' year' . ($years > 1 ? 's' : '') . ' ago';
     }
-    return $randomString;
 }
 
-/**
- * Format date
- * 
- * @param string $date Date string
- * @param string $format Format string
- * @return string Formatted date
- */
-function formatDate($date, $format = 'M d, Y H:i') {
-    return date($format, strtotime($date));
+// Function to sanitize input
+function sanitize($input) {
+    return htmlspecialchars($input, ENT_QUOTES, 'UTF-8');
 }
 
-/**
- * Check if user is logged in
- * 
- * @return bool True if user is logged in, false otherwise
- */
+// Function to check if user is logged in
 function isLoggedIn() {
     return isset($_SESSION['user_id']);
 }
 
-/**
- * Check if user has a specific role
- * 
- * @param string|array $role Role(s) to check
- * @return bool True if user has the role, false otherwise
- */
+// Function to check if user has a specific role
 function hasRole($role) {
-    if (!isLoggedIn()) {
-        return false;
-    }
-    
-    if (is_array($role)) {
-        return in_array($_SESSION['user_role'], $role);
-    }
-    
-    return $_SESSION['user_role'] === $role;
+    return isset($_SESSION['user_role']) && $_SESSION['user_role'] === $role;
 }
 
-/**
- * Redirect to a URL
- * 
- * @param string $url URL to redirect to
- * @return void
- */
-function redirect($url) {
-    header("Location: {$url}");
+// Function to redirect to a specific page
+function redirect($page) {
+    header("Location: {$page}");
     exit;
 }
 
-/**
- * Get current URL
- * 
- * @return string Current URL
- */
-function getCurrentUrl() {
-    return "http://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";
-}
-
-/**
- * Get base URL
- * 
- * @return string Base URL
- */
-function getBaseUrl() {
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-    return $protocol . $_SERVER['HTTP_HOST'];
-}
-
-function timeAgo($datetime) {
-    $timestamp = strtotime($datetime);
-    $strTime = array("second", "minute", "hour", "day", "month", "year");
-    $length = array("60", "60", "24", "30", "12", "10");
-
-    $currentTime = time();
-    if ($currentTime >= $timestamp) {
-        $diff = $currentTime - $timestamp;
-        
-        for ($i = 0; $diff >= $length[$i] && $i < count($length) - 1; $i++) {
-            $diff = $diff / $length[$i];
+// Function to display error messages
+function displayErrors($errors) {
+    if (!empty($errors)) {
+        echo '<div class="alert alert-danger">';
+        echo '<ul class="mb-0">';
+        foreach ($errors as $error) {
+            echo '<li>' . sanitize($error) . '</li>';
         }
-
-        $diff = round($diff);
-        return $diff . " " . $strTime[$i] . ($diff > 1 ? "s" : "") . " ago";
+        echo '</ul>';
+        echo '</div>';
     }
+}
+
+// Function to display success messages
+function displaySuccess($message) {
+    if (!empty($message)) {
+        echo '<div class="alert alert-success">';
+        echo sanitize($message);
+        echo '</div>';
+    }
+}
+
+// Function to log activity
+function logActivity($userId, $action, $details = null) {
+    global $db;
     
-    return "just now";
+    $stmt = $db->prepare("INSERT INTO activity_logs (user_id, action, details, created_at) VALUES (?, ?, ?, ?)");
+    return $stmt->execute([$userId, $action, $details, date('Y-m-d H:i:s')]);
 }

@@ -1,15 +1,25 @@
 <?php
-require_once 'User.php';
+require_once 'models/User.php';
+require_once 'models/Observer.php';
 require_once 'services/NotificationService.php';
+require_once 'models/Bug.php';
 
 class Staff extends User implements Observer {
+    private $specialization;
+    private $skills;
+    
     public function __construct($id = null, $name = null, $email = null, $password = null) {
         parent::__construct($id, $name, $email, $password);
         $this->role = 'staff';
     }
-
+    
     public function login($email, $password) {
         global $db;
+        
+        if (!$db) {
+            // If $db is still null, try to reconnect
+            require_once 'config/database.php';
+        }
         
         $stmt = $db->prepare("SELECT * FROM users WHERE email = ? AND role = 'staff'");
         $stmt->execute([$email]);
@@ -29,6 +39,9 @@ class Staff extends User implements Observer {
             $stmt = $db->prepare("UPDATE users SET last_login = ? WHERE id = ?");
             $stmt->execute([$this->last_login, $this->id]);
             
+            // Load specialization and skills
+            $this->loadSpecializationAndSkills();
+            
             return true;
         }
         
@@ -40,212 +53,23 @@ class Staff extends User implements Observer {
         return true;
     }
 
-    public function viewAssignedBugs() {
-        global $db;
-        
-        $stmt = $db->prepare("SELECT b.*, p.name as project_name, u.name as reporter_name 
-                             FROM bugs b 
-                             LEFT JOIN projects p ON b.project_id = p.id 
-                             LEFT JOIN users u ON b.reported_by = u.id 
-                             WHERE b.assigned_to = ? 
-                             ORDER BY b.created_at DESC");
-        $stmt->execute([$this->id]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    public function viewBugDetails($bugId) {
-        $bug = new Bug($bugId);
-        
-        if (!$bug->getId()) {
-            return null;
-        }
-        
-        $details = $bug->getDetails();
-        
-        // Check if staff has permission to view this bug
-        if ($details['assigned_to'] != $this->id && $details['status'] !== 'open') {
-            return null;
-        }
-        
-        $comments = $bug->getComments();
-        $history = $bug->getHistory();
-        
-        return [
-            'details' => $details,
-            'comments' => $comments,
-            'history' => $history
-        ];
-    }
-
-    public function updateBugStatus($bugId, $status, $comment = null) {
-        $bug = new Bug($bugId);
-        
-        if (!$bug->getId()) {
-            return false;
-        }
-        
-        $details = $bug->getDetails();
-        
-        // Check if staff has permission to update this bug
-        if ($details['assigned_to'] != $this->id) {
-            return false;
-        }
-        
-        global $db;
-        
-        $db->beginTransaction();
-        
-        try {
-            // Update bug status
-            $bug->setStatus($status);
-            
-            // Add comment if provided
-            if ($comment) {
-                $bug->addComment($this->id, $comment);
-            }
-            
-            // Log activity
-            $system = BugTrackingSystem::getInstance();
-            $system->logActivity($this->id, 'update_bug_status', "Updated bug #{$bug->getTicketNumber()} status to {$status}");
-            
-            // Save bug (this will trigger notifications to observers)
-            $bug->save();
-            
-            $db->commit();
-            return true;
-        } catch (Exception $e) {
-            $db->rollBack();
-            return false;
-        }
-    }
-
-    public function assignBugToOtherStaff($bugId, $staffId) {
-        $bug = new Bug($bugId);
-        
-        if (!$bug->getId()) {
-            return false;
-        }
-        
-        $details = $bug->getDetails();
-        
-        // Check if staff has permission to reassign this bug
-        if ($details['assigned_to'] != $this->id) {
-            return false;
-        }
-        
-        $bug->setAssignedTo($staffId);
-        $bug->setStatus('assigned');
-        
-        // Log activity
-        $system = BugTrackingSystem::getInstance();
-        $system->logActivity($this->id, 'reassign_bug', "Reassigned bug #{$bug->getTicketNumber()} to another staff member");
-        
-        // Get staff details for notification
-        global $db;
-        $stmt = $db->prepare("SELECT * FROM users WHERE id = ? AND role = 'staff'");
-        $stmt->execute([$staffId]);
-        $staffData = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($staffData) {
-            $newStaff = new Staff($staffData['id'], $staffData['name'], $staffData['email'], $staffData['password']);
-            
-            // Send notification
-            $notificationService = NotificationService::getInstance();
-            $notificationService->notifyBugAssignment($newStaff, $bug);
-        }
-        
-        return $bug->save();
-    }
-
-    public function addComment($bugId, $content) {
-        $bug = new Bug($bugId);
-        
-        if (!$bug->getId()) {
-            return false;
-        }
-        
-        $details = $bug->getDetails();
-        
-        // Check if staff has permission to comment on this bug
-        if ($details['assigned_to'] != $this->id && $details['status'] !== 'open') {
-            return false;
-        }
-        
-        $result = $bug->addComment($this->id, $content);
-        
-        if ($result) {
-            // Log activity
-            $system = BugTrackingSystem::getInstance();
-            $system->logActivity($this->id, 'add_comment', "Added comment to bug #{$bug->getTicketNumber()}");
-            
-            return true;
-        }
-        
-        return false;
-    }
-
-    public function editBug($bugId, $details) {
-        $bug = new Bug($bugId);
-        
-        if (!$bug->getId()) {
-            return false;
-        }
-        
-        $bugDetails = $bug->getDetails();
-        
-        // Check if staff has permission to edit this bug
-        if ($bugDetails['assigned_to'] != $this->id) {
-            return false;
-        }
-        
-        if (isset($details['title'])) {
-            $bug->setTitle($details['title']);
-        }
-        
-        if (isset($details['description'])) {
-            $bug->setDescription($details['description']);
-        }
-        
-        if (isset($details['severity'])) {
-            $bug->setSeverity($details['severity']);
-        }
-        
-        if (isset($details['priority'])) {
-            $bug->setPriority($details['priority']);
-        }
-        
-        if (isset($details['status'])) {
-            $bug->setStatus($details['status']);
-        }
-        
-        if (isset($details['steps'])) {
-            $bug->setSteps($details['steps']);
-        }
-        
-        if (isset($details['expected_result'])) {
-            $bug->setExpectedResult($details['expected_result']);
-        }
-        
-        if (isset($details['actual_result'])) {
-            $bug->setActualResult($details['actual_result']);
-        }
-        
-        // Log activity
-        $system = BugTrackingSystem::getInstance();
-        $system->logActivity($this->id, 'edit_bug', "Edited bug #{$bug->getTicketNumber()}");
-        
-        return $bug->save();
-    }
-    
+    // Fixed update method to match the expected parameters
     public function update($subject, $status) {
-        // Use notification service to handle both in-app and email notifications
-        $notificationService = NotificationService::getInstance();
-        return $notificationService->notifyBugStatusChange($this, $subject, $status);
+        // Use notification service to handle both in-app and email notifications if it exists
+        if (class_exists('NotificationService')) {
+            $notificationService = NotificationService::getInstance();
+            // Pass the old status as an empty string since we don't have it
+            return $notificationService->notifyBugStatusChange($this, $subject, $status, '');
+        }
+        return true;
     }
 
     public function getNotifications() {
-        $notificationService = NotificationService::getInstance();
-        return $notificationService->getUserNotifications($this->id);
+        if (class_exists('NotificationService')) {
+            $notificationService = NotificationService::getInstance();
+            return $notificationService->getUserNotifications($this->id);
+        }
+        return [];
     }
 
     public function save() {
@@ -266,9 +90,11 @@ class Staff extends User implements Observer {
         global $db;
         
         if ($this->id) {
-            // Delete notifications
-            $notificationService = NotificationService::getInstance();
-            $notificationService->deleteAllNotifications($this->id);
+            // Delete notifications if NotificationService exists
+            if (class_exists('NotificationService')) {
+                $notificationService = NotificationService::getInstance();
+                $notificationService->deleteAllNotifications($this->id);
+            }
             
             // Delete user
             $stmt = $db->prepare("DELETE FROM users WHERE id = ?");
@@ -276,5 +102,116 @@ class Staff extends User implements Observer {
         }
         
         return false;
+    }
+
+    // Add this method to handle bug assignment to other staff
+    public function assignBugToOtherStaff($bugId, $newStaffId) {
+        global $db;
+        
+        // Check if the bug exists
+        $bug = new Bug($bugId);
+        if (!$bug->getId()) {
+            return false;
+        }
+        
+        // Check if the current staff is assigned to this bug
+        if ($bug->getAssignedTo() != $this->id) {
+            return false;
+        }
+        
+        // Update the bug assignment
+        $bug->setAssignedTo($newStaffId);
+        $bug->setStatus('assigned');
+        $result = $bug->save();
+        
+        if ($result) {
+            // Log activity
+            $system = BugTrackingSystem::getInstance();
+            $system->logActivity($this->id, 'reassign_bug', "Reassigned bug #{$bug->getTicketNumber()} to staff ID: {$newStaffId}");
+            
+            // Get the new staff member
+            $stmt = $db->prepare("SELECT * FROM users WHERE id = ? AND role = 'staff'");
+            $stmt->execute([$newStaffId]);
+            $staffData = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($staffData) {
+                $newStaff = new Staff($staffData['id'], $staffData['name'], $staffData['email'], $staffData['password']);
+                
+                // Send notification
+                $notificationService = NotificationService::getInstance();
+                $notificationService->notifyBugAssignment($newStaff, $bug);
+            }
+        }
+        
+        return $result;
+    }
+    
+    // Add methods for staff to handle bugs
+    public function getBugsAssignedToMe() {
+        global $db;
+        
+        $stmt = $db->prepare("SELECT b.*, p.name as project_name, u.name as reporter_name 
+                             FROM bugs b 
+                             LEFT JOIN projects p ON b.project_id = p.id 
+                             LEFT JOIN users u ON b.reported_by = u.id 
+                             WHERE b.assigned_to = ? 
+                             ORDER BY b.created_at DESC");
+        $stmt->execute([$this->id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    public function updateBugStatus($bugId, $status, $comment = null) {
+        $bug = new Bug($bugId);
+        
+        if (!$bug->getId()) {
+            return false;
+        }
+        
+        // Check if the bug is assigned to this staff
+        if ($bug->getAssignedTo() != $this->id) {
+            return false;
+        }
+        
+        $oldStatus = $bug->getStatus();
+        $bug->setStatus($status);
+        $result = $bug->save();
+        
+        if ($result && $comment) {
+            $bug->addComment($this->id, $comment);
+        }
+        
+        return $result;
+    }
+
+    private function loadSpecializationAndSkills() {
+        global $db;
+
+        $stmt = $db->prepare("SELECT specialization, skills FROM staff_details WHERE user_id = ?");
+        $stmt->execute([$this->id]);
+        $details = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($details) {
+            $this->specialization = $details['specialization'];
+            $this->skills = $details['skills'];
+        } else {
+            $this->specialization = null;
+            $this->skills = null;
+        }
+    }
+
+    public function getSpecialization() {
+        return $this->specialization;
+    }
+
+    public function getSkills() {
+        return $this->skills;
+    }
+
+    public function setSpecialization($specialization) {
+        $this->specialization = $specialization;
+    }
+
+    public function setSkills($skills) {
+        $this->skills = $skills;
     }
 }

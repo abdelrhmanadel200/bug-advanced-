@@ -69,6 +69,5 @@ class NotificationController {
         $notifications = $this->getUnreadNotifications();
         $count = count($notifications);
         
-        include 'views/components/notification-dropdown.php';
-    }
+     }
 }

@@ -227,7 +227,7 @@ class UserController {
             $name = $_POST['name'] ?? '';
             $email = $_POST['email'] ?? '';
             $role = $_POST['role'] ?? '';
-            $status = $_POST['status'] ?? '';  ?? '';
+            $status = $_POST['status'] ?? '';
             $role = $_POST['role'] ?? '';
             $status = $_POST['status'] ?? '';
             

@@ -1,15 +1,24 @@
 <?php
-require_once 'User.php';
+require_once 'models/User.php';
 require_once 'services/NotificationService.php';
+require_once 'models/BugTrackingSystem.php';
+require_once 'models/Bug.php';
+require_once 'models/Staff.php';
+require_once 'models/Customer.php';
 
 class Administrator extends User {
     public function __construct($id = null, $name = null, $email = null, $password = null) {
         parent::__construct($id, $name, $email, $password);
         $this->role = 'administrator';
     }
-
+    
     public function login($email, $password) {
         global $db;
+        
+        if (!$db) {
+            // If $db is still null, try to reconnect
+            require_once 'config/database.php';
+        }
         
         $stmt = $db->prepare("SELECT * FROM users WHERE email = ? AND role = 'administrator'");
         $stmt->execute([$email]);

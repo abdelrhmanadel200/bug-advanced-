@@ -47,7 +47,7 @@ class Bug implements Observable {
             $this->reported_by = $bug['reported_by'];
             $this->assigned_to = $bug['assigned_to'];
             $this->severity = $bug['severity'];
-            $this->priority = $bug['priority'];
+            $this->priority = $bug['priority'] ?? 'medium';
             $this->status = $bug['status'];
             $this->steps = $bug['steps'] ?? null;
             $this->expected_result = $bug['expected_result'] ?? null;
@@ -421,19 +421,24 @@ class Bug implements Observable {
         return $stmt->execute([$this->id, $userId, $field, $old_value, $new_value, date('Y-m-d H:i:s')]);
     }
     
-    public function attachFile($filename, $filepath, $filetype, $userId) {
+    public function attachScreenshot($filename) {
         global $db;
         
         if (!$this->id) {
             return false;
         }
         
+        // Get file information
+        $file_path = 'uploads/screenshots/' . $filename;
+        $file_type = pathinfo($filename, PATHINFO_EXTENSION);
+        $uploaded_by = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : $this->reported_by;
+        
         $stmt = $db->prepare("INSERT INTO bug_attachments (bug_id, file_name, file_path, file_type, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?)");
-        $result = $stmt->execute([$this->id, $filename, $filepath, $filetype, $userId, date('Y-m-d H:i:s')]);
+        $result = $stmt->execute([$this->id, $filename, $file_path, $file_type, $uploaded_by, date('Y-m-d H:i:s')]);
         
         if ($result) {
-            // Log the attachment in bug history
-            $this->logHistory('attachment', null, "File attached: {$filename}");
+            // Log the screenshot in bug history
+            $this->logHistory('attachment', null, "Screenshot added: {$filename}");
         }
         
         return $result;

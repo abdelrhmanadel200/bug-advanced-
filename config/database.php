@@ -1,27 +1,15 @@
 <?php
-class Database {
-    private $host = 'localhost';
-    private $db_name = 'bug_tracking_system';
-    private $username = 'root';
-    private $password = '';
-    private $conn;
+// Database configuration
+$db_host = 'localhost';
+$db_name = 'bug_tracking_system';
+$db_user = 'root';
+$db_pass = '';
 
-    // Get database connection
-    public function getConnection() {
-        $this->conn = null;
+global $db; // Explicitly declare $db as global
 
-        try {
-            $this->conn = new PDO(
-                "mysql:host=" . $this->host . ";dbname=" . $this->db_name,
-                $this->username,
-                $this->password
-            );
-            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $this->conn->exec("set names utf8");
-        } catch(PDOException $e) {
-            echo "Connection Error: " . $e->getMessage();
-        }
-
-        return $this->conn;
-    }
+try {
+    $db = new PDO("mysql:host={$db_host};dbname={$db_name}", $db_user, $db_pass);
+    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Database connection failed: " . $e->getMessage());
 }

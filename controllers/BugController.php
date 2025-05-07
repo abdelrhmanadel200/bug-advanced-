@@ -5,6 +5,7 @@ require_once 'models/Comment.php';
 require_once 'models/BugTrackingSystem.php';
 require_once 'models/Staff.php';
 require_once 'models/Customer.php';
+require_once 'models/Administrator.php';
 
 class BugController {
     private $system;

@@ -4,117 +4,123 @@ abstract class User {
     protected $name;
     protected $email;
     protected $password;
-    protected $status;
     protected $role;
+    protected $status;
     protected $created_at;
     protected $updated_at;
     protected $last_login;
-
+    
     public function __construct($id = null, $name = null, $email = null, $password = null) {
         $this->id = $id;
         $this->name = $name;
         $this->email = $email;
         $this->password = $password;
-        $this->status = 'active';
-        $this->created_at = date('Y-m-d H:i:s');
-        $this->updated_at = date('Y-m-d H:i:s');
     }
-
+    
+    // Getters
     public function getId() {
         return $this->id;
     }
-
+    
     public function getName() {
         return $this->name;
     }
-
-    public function setName($name) {
-        $this->name = $name;
-        $this->updated_at = date('Y-m-d H:i:s');
-    }
-
+    
     public function getEmail() {
         return $this->email;
     }
-
-    public function setEmail($email) {
-        $this->email = $email;
-        $this->updated_at = date('Y-m-d H:i:s');
-    }
-
-    public function getPassword() {
-        return $this->password;
-    }
-
-    public function setPassword($password) {
-        $this->password = password_hash($password, PASSWORD_DEFAULT);
-        $this->updated_at = date('Y-m-d H:i:s');
-    }
-
-    public function getStatus() {
-        return $this->status;
-    }
-
-    public function setStatus($status) {
-        $this->status = $status;
-        $this->updated_at = date('Y-m-d H:i:s');
-    }
-
+    
     public function getRole() {
         return $this->role;
     }
-
+    
+    public function getStatus() {
+        return $this->status;
+    }
+    
     public function getCreatedAt() {
         return $this->created_at;
     }
-
+    
     public function getUpdatedAt() {
         return $this->updated_at;
     }
-
+    
     public function getLastLogin() {
         return $this->last_login;
     }
-
+    
+    // Setters
+    public function setName($name) {
+        $this->name = $name;
+    }
+    
+    public function setEmail($email) {
+        $this->email = $email;
+    }
+    
+    public function setPassword($password) {
+        $this->password = $password;
+    }
+    
+    public function setStatus($status) {
+        $this->status = $status;
+    }
+    
+    public function setCreatedAt($created_at) {
+        $this->created_at = $created_at;
+    }
+    
+    public function setUpdatedAt($updated_at) {
+        $this->updated_at = $updated_at;
+    }
+    
     public function setLastLogin($last_login) {
         $this->last_login = $last_login;
     }
-
-    public function login($email, $password) {
-        // This will be implemented in the concrete classes
-        return false;
-    }
-
-    public function logout() {
-        // This will be implemented in the concrete classes
-        return false;
-    }
-
-    public function getProfile() {
-        return [
-            'id' => $this->id,
-            'name' => $this->name,
-            'email' => $this->email,
-            'role' => $this->role,
-            'status' => $this->status,
-            'created_at' => $this->created_at,
-            'last_login' => $this->last_login
-        ];
-    }
-
-    public function setProfile($profile) {
-        if (isset($profile['name'])) {
-            $this->name = $profile['name'];
-        }
-        if (isset($profile['email'])) {
-            $this->email = $profile['email'];
-        }
-        if (isset($profile['status'])) {
-            $this->status = $profile['status'];
-        }
-        $this->updated_at = date('Y-m-d H:i:s');
-    }
-
+    
+    // Abstract methods
+    abstract public function login($email, $password);
+    abstract public function logout();
     abstract public function save();
-    abstract public function delete();
+    
+    // Static methods
+    public static function findById($id) {
+        global $db;
+        
+        if (!$db) {
+            // If $db is still null, try to reconnect
+            require_once 'config/database.php';
+        }
+        
+        $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
+        $stmt->execute([$id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+    
+    public static function findByEmail($email) {
+        global $db;
+        
+        if (!$db) {
+            // If $db is still null, try to reconnect
+            require_once 'config/database.php';
+        }
+        
+        $stmt = $db->prepare("SELECT * FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+    
+    public static function getAll() {
+        global $db;
+        
+        if (!$db) {
+            // If $db is still null, try to reconnect
+            require_once 'config/database.php';
+        }
+        
+        $stmt = $db->prepare("SELECT * FROM users ORDER BY name ASC");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
