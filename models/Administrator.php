@@ -6,8 +6,29 @@ require_once 'models/Bug.php';
 require_once 'models/Staff.php';
 require_once 'models/Customer.php';
 
-class Administrator extends User {
-    public function __construct($id = null, $name = null, $email = null, $password = null) {
+require_once 'models/Observer.php';          // make sure you include the interface
+
+class Administrator extends User implements Observer {
+
+    /**
+     * @param mixed  $subject   The observable (e.g. a Bug)
+     * @param mixed  $status    The new status (string)
+     */
+    public function update($subject, $status)
+    {
+        // $subject is your Bug instance
+        // $status is the new status value
+
+        // e.g. notify the admin of the change:
+        $notificationService = NotificationService::getInstance();
+        $notificationService->notifyBugStatusChange(
+            $this,
+            $subject,
+            $status,
+            /* oldStatus? if you saved it somewhere */
+        );
+    }
+        public function __construct($id = null, $name = null, $email = null, $password = null) {
         parent::__construct($id, $name, $email, $password);
         $this->role = 'administrator';
     }
@@ -315,6 +336,9 @@ class Administrator extends User {
 
     public function resetUserPassword($userId, $newPassword) {
         global $db;
+        if (!$db) {
+            require_once 'config/database.php';
+        }
         
         // Get user details
         $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
@@ -340,9 +364,14 @@ class Administrator extends User {
                 return false;
         }
         
-        $userObj->setPassword($newPassword);
+        // Hash the new password
+        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
         
-        if ($userObj->save()) {
+        // Update the password directly in the database
+        $stmt = $db->prepare("UPDATE users SET password = ?, updated_at = ? WHERE id = ?");
+        $result = $stmt->execute([$hashedPassword, date('Y-m-d H:i:s'), $userId]);
+        
+        if ($result) {
             // Log activity
             $system = BugTrackingSystem::getInstance();
             $system->logActivity($this->id, 'reset_password', "Reset password for user: {$user['name']}");

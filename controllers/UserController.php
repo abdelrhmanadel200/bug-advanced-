@@ -82,6 +82,9 @@ class UserController {
         }
         
         global $db;
+        if (!$db) {
+            require_once 'config/database.php';
+        }
         
         $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
         $stmt->execute([$_SESSION['user_id']]);
@@ -605,6 +608,9 @@ class UserController {
         }
         
         global $db;
+        if (!$db) {
+            require_once 'config/database.php';
+        }
         
         $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
         $stmt->execute([$id]);

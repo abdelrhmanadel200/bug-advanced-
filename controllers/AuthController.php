@@ -115,11 +115,18 @@ class AuthController {
                 $customer->setUpdatedAt(date('Y-m-d H:i:s'));
                 
                 if ($customer->register()) {
-                    // Log activity
-                    $this->system->logActivity(null, 'register', "New customer registered: {$name}");
+                    // Get the new customer ID
+                    $customerId = $customer->getId();
+                    
+                    // Log activity with the new customer ID or use 0 if not available
+                    $this->system->logActivity($customerId ?: 0, 'register', "New customer registered: {$name}");
                     
                     // Notify administrators about new registration
                     global $db;
+                    if (!$db) {
+                        require_once 'config/database.php';
+                    }
+                    
                     $stmt = $db->prepare("SELECT * FROM users WHERE role = 'administrator' AND status = 'active'");
                     $stmt->execute();
                     $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -169,6 +176,9 @@ class AuthController {
                 $_SESSION['errors'] = ['Invalid email format'];
             } else {
                 global $db;
+                if (!$db) {
+                    require_once 'config/database.php';
+                }
                 
                 $stmt = $db->prepare("SELECT * FROM users WHERE email = ?");
                 $stmt->execute([$email]);
@@ -179,8 +189,38 @@ class AuthController {
                     $token = bin2hex(random_bytes(32));
                     $expires = date('Y-m-d H:i:s', strtotime('+1 hour'));
                     
-                    $stmt = $db->prepare("INSERT INTO password_resets (email, token, expires_at, created_at) VALUES (?, ?, ?, ?)");
-                    $stmt->execute([$email, $token, $expires, date('Y-m-d H:i:s')]);
+                    // Check if password_resets table exists, if not create it
+                    try {
+                        // First, check if the table exists
+                        $tableExists = false;
+                        try {
+                            $checkTable = $db->query("SELECT 1 FROM password_resets LIMIT 1");
+                            $tableExists = true;
+                        } catch (PDOException $e) {
+                            $tableExists = false;
+                        }
+                        
+                        if (!$tableExists) {
+                            // Create the table if it doesn't exist
+                            $db->exec("CREATE TABLE IF NOT EXISTS password_resets (
+                                id INT AUTO_INCREMENT PRIMARY KEY,
+                                email VARCHAR(100) NOT NULL,
+                                token VARCHAR(255) NOT NULL,
+                                expires_at DATETIME NOT NULL,
+                                created_at DATETIME NOT NULL
+                            )");
+                        }
+                        
+                        // Now insert the reset token
+                        $stmt = $db->prepare("INSERT INTO password_resets (email, token, expires_at, created_at) VALUES (?, ?, ?, ?)");
+                        $stmt->execute([$email, $token, $expires, date('Y-m-d H:i:s')]);
+                    } catch (PDOException $e) {
+                        // Log the error
+                        error_log("Error in forgotPassword: " . $e->getMessage());
+                        $_SESSION['errors'] = ['An error occurred. Please try again later.'];
+                        header('Location: index.php?controller=auth&action=forgotPassword');
+                        exit;
+                    }
                     
                     // Create user object based on role
                     switch ($user['role']) {
@@ -223,13 +263,39 @@ class AuthController {
         }
         
         global $db;
+        if (!$db) {
+            require_once 'config/database.php';
+        }
         
-        $stmt = $db->prepare("SELECT * FROM password_resets WHERE token = ? AND expires_at > NOW()");
-        $stmt->execute([$token]);
-        $reset = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$reset) {
-            $_SESSION['errors'] = ['Invalid or expired token'];
+        // Check if password_resets table exists
+        try {
+            $tableExists = false;
+            try {
+                $checkTable = $db->query("SELECT 1 FROM password_resets LIMIT 1");
+                $tableExists = true;
+            } catch (PDOException $e) {
+                $tableExists = false;
+            }
+            
+            if (!$tableExists) {
+                $_SESSION['errors'] = ['Invalid or expired token'];
+                header('Location: index.php?controller=auth&action=login');
+                exit;
+            }
+            
+            $stmt = $db->prepare("SELECT * FROM password_resets WHERE token = ? AND expires_at > NOW()");
+            $stmt->execute([$token]);
+            $reset = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$reset) {
+                $_SESSION['errors'] = ['Invalid or expired token'];
+                header('Location: index.php?controller=auth&action=login');
+                exit;
+            }
+        } catch (PDOException $e) {
+            // Log the error
+            error_log("Error in resetPassword: " . $e->getMessage());
+            $_SESSION['errors'] = ['An error occurred. Please try again later.'];
             header('Location: index.php?controller=auth&action=login');
             exit;
         }

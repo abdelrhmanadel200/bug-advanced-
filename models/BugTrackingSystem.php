@@ -27,17 +27,10 @@ class BugTrackingSystem {
     
     // Prevent unserialization
     public function __wakeup() {}
-    
     public function trackBug($ticketNumber) {
-        $bug = Bug::findByTicketNumber($ticketNumber);
-        
-        if (!$bug) {
-            return null;
-        }
-        
-        return $bug->getDetails();
+        // findByTicketNumber already returns either a Bug instance or null
+        return Bug::findByTicketNumber($ticketNumber);
     }
-    
     public function reportBug($title, $description, $projectId, $reportedBy, $severity, $priority = 'medium', $steps = null, $expectedResult = null, $actualResult = null) {
         $bug = new Bug();
         $bug->setTitle($title);

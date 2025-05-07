@@ -3,7 +3,7 @@
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">Bugs</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
-        <?php if ($_SESSION['user_role'] === 'customer'): ?>
+        <?php if ($_SESSION['user_role'] === 'customer' || $_SESSION['user_role'] === 'administrator'): ?>
             <a href="index.php?controller=bug&action=report" class="btn btn-sm btn-primary">
                 <i class="fas fa-plus me-1"></i> Report Bug
             </a>
@@ -84,7 +84,7 @@
                                 <td><?php echo date('M d, Y', strtotime($bug['created_at'])); ?></td>
                                 <td>
                                     <div class="btn-group">
-                                        <a href="index.php?controller=bug&action=view&id=<?php echo $bug['id']; ?>" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="View">
+                                        <a href="index.php?controller=bug&action=view&id=<?$bug->getId() ?>" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="View">
                                             <i class="fas fa-eye"></i>
                                         </a>
                                         

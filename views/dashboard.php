@@ -128,7 +128,7 @@
                                         </td>
                                         <td><?php echo $bug['project_name'] ?? 'N/A'; ?></td>
                                         <td>
-                                            <a href="index.php?controller=bug&action=view&id=<?php echo $bug['id']; ?>" class="btn btn-sm btn-primary">
+                                            <a href="index.php?controller=bug&action=edit&id=<?= $bug->getId() ?>" class="btn btn-sm btn-primary">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                         </td>

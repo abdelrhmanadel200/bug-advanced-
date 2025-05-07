@@ -8,7 +8,7 @@
         </a>
         
         <?php if ($_SESSION['user_role'] === 'administrator' || ($_SESSION['user_role'] === 'staff' && $bug['assigned_to'] == $_SESSION['user_id'])): ?>
-            <a href="index.php?controller=bug&action=edit&id=<?php echo $bug['id']; ?>" class="btn btn-sm btn-warning ms-2">
+            <a href="index.php?controller=bug&action=edit&id=<?=$bug->getId() ?>" class="btn btn-sm btn-warning ms-2">
                 <i class="fas fa-edit me-1"></i> Edit
             </a>
         <?php endif; ?>
@@ -19,14 +19,14 @@
         
         <?php if (isset($_SESSION['github_token']) && ($_SESSION['user_role'] === 'administrator' || $_SESSION['user_role'] === 'staff')): ?>
             <?php if (!$github_issue): ?>
-                <a href="index.php?controller=github&action=createIssue&bug_id=<?php echo $bug['id']; ?>" class="btn btn-sm btn-dark ms-2">
+                <a href="index.php?controller=github&action=createIssue&bug_id=<?=$bug->getId() ?>" class="btn btn-sm btn-dark ms-2">
                     <i class="fab fa-github me-1"></i> Create GitHub Issue
                 </a>
             <?php else: ?>
-                <a href="index.php?controller=github&action=viewIssue&bug_id=<?php echo $bug['id']; ?>" class="btn btn-sm btn-dark ms-2">
+                <a href="index.php?controller=github&action=viewIssue&bug_id=<?=$bug->getId() ?>" class="btn btn-sm btn-dark ms-2">
                     <i class="fab fa-github me-1"></i> View GitHub Issue
                 </a>
-                <a href="index.php?controller=github&action=syncIssue&bug_id=<?php echo $bug['id']; ?>" class="btn btn-sm btn-outline-dark ms-2">
+                <a href="index.php?controller=github&action=syncIssue&bug_id=<?=$bug->getId() ?>" class="btn btn-sm btn-outline-dark ms-2">
                     <i class="fas fa-sync me-1"></i> Sync with GitHub
                 </a>
             <?php endif; ?>
@@ -39,7 +39,7 @@
         <div class="card mb-4">
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0"><?php echo $bug['title']; ?></h5>
+                    <h5 class="card-title mb-0"><?= htmlspecialchars($bug->getTitle()) ?></h5>
                     <span class="badge bg-<?php 
                         echo $bug['status'] === 'open' ? 'danger' : 
                             ($bug['status'] === 'assigned' ? 'warning' : 
@@ -53,7 +53,7 @@
             <div class="card-body">
                 <div class="mb-4">
                     <h6 class="fw-bold">Description</h6>
-                    <p class="mb-0"><?php echo nl2br($bug['description']); ?></p>
+                    <p class="mb-0"><?=$bug->getDescription() ?></p>
                 </div>
                 
                 <?php if (!empty($bug['steps'])): ?>
@@ -66,14 +66,14 @@
                 <?php if (!empty($bug['expected_result'])): ?>
                 <div class="mb-4">
                     <h6 class="fw-bold">Expected Result</h6>
-                    <p class="mb-0"><?php echo nl2br($bug['expected_result']); ?></p>
+                    <p class="mb-0"><?=$bug->getExpectedResult() ?></p>
                 </div>
                 <?php endif; ?>
                 
                 <?php if (!empty($bug['actual_result'])): ?>
                 <div class="mb-4">
                     <h6 class="fw-bold">Actual Result</h6>
-                    <p class="mb-0"><?php echo nl2br($bug['actual_result']); ?></p>
+                    <p class="mb-0"><?=$bug->getActualResult() ?></p>
                 </div>
                 <?php endif; ?>
                 
@@ -122,7 +122,7 @@
                 <div class="mt-4">
                     <button id="comment-toggle" class="btn btn-primary">Add Comment</button>
                     
-                    <form id="comment-form" method="POST" action="index.php?controller=bug&action=addComment&id=<?php echo $bug['id']; ?>" class="mt-3 d-none">
+                    <form id="comment-form" method="POST" action="index.php?controller=bug&action=addComment&id=<?=$bug->getId() ?>" class="mt-3 d-none">
                         <div class="mb-3">
                             <label for="comment" class="form-label">Your Comment</label>
                             <textarea class="form-control" id="comment" name="comment" rows="3" required></textarea>
@@ -145,7 +145,7 @@
                 <ul class="list-group list-group-flush">
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         <span>Ticket Number:</span>
-                        <span class="fw-bold"><?php echo $bug['ticket_number']; ?></span>
+                        <span class="fw-bold"><?=$bug->getTicketNumber() ?></span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         <span>Project:</span>
@@ -196,7 +196,7 @@
                 <h5 class="card-title mb-0">Update Status</h5>
             </div>
             <div class="card-body">
-                <form method="POST" action="index.php?controller=bug&action=updateStatus&id=<?php echo $bug['id']; ?>">
+                <form method="POST" action="index.php?controller=bug&action=updateStatus&id=<?=$bug->getId() ?>">
                     <div class="mb-3">
                         <label for="status" class="form-label">Status</label>
                         <select class="form-select" id="status" name="status">
