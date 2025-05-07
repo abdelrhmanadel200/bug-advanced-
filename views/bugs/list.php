@@ -94,7 +94,7 @@
                                             </a>
                                         <?php endif; ?>
                                         
-                                        <?php if ($_SESSION['user_role'] === 'administrator'): ?>
+                             a           <?php if ($_SESSION['user_role'] === 'administrator'): ?>
                                             <a href="index.php?controller=bug&action=delete&id=<?php echo $bug['id']; ?>" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" title="Delete" onclick="return confirm('Are you sure you want to delete this bug?');">
                                                 <i class="fas fa-trash"></i>
                                             </a>
